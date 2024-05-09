@@ -1,0 +1,28 @@
+Terminal 1 to 3
+ssh wolfsonbot@10.0.0.21
+wolfsonbot
+
+ Terminal 1
+roscore
+
+ Terminal 2
+roslaunch open_manipulator_controller open_manipulator_controller.launch usb_port:=/dev/ttyACM0 baud_rate:=1000000
+
+ Terminal 3
+roslaunch usb_cam usb_cam-test.launch
+ 
+ 
+on linux machine:
+T4
+roslaunch open_manipulator_control_gui open_manipulator_control_gui.launch
+
+T5
+rosrun cube_spotter cube_spotter_node.py
+
+T6
+rosrun cube_spotter cube_tracker_node.py
+
+
+
+catkin_make
+source devel/setup.bash

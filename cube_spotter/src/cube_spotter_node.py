@@ -118,7 +118,7 @@ class cubeSpotter:
   def callback(self,data):
     try:
       cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-      cv2.imwrite("ops.jpg",cv_image)
+      # cv2.imwrite("ops.jpg",cv_image)
     except CvBridgeError as e:
       print(e)
       

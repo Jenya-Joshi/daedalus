@@ -175,6 +175,10 @@ class cubeSpotter:
       tempCube.area=cubeListRed[c].area
       tempCube.normalisedCoordinateX=cubeListRed[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListRed[c].centreY/rows
+      tempCube.height = cubeListRed[c].height
+      #print('red cube height: ', tempCube.height)
+      distance_red = (6*620)/tempCube.height #distance = (height in cm x focal length in pix per cm) / height in pixels
+      print('distance red:', distance_red)
       returnCubeArray.cubes.append(tempCube)
 
     for c in range(len(cubeListBlue)):

@@ -4,3 +4,4 @@ float64 normalisedCoordinateY
 float64 area
 float64 height
 float64 width
+float64 distance

@@ -18,6 +18,9 @@ class cube:
     self.centreX=0.0
     self.centreY=0.0  
     self.area=0.0
+    self.width=0.0
+    self.height=0.0
+    self.distance=0.0
 
 # Function for finding boxes and drawing on the output image
 def mask2box(mask,colour,canvas,minArea):
@@ -43,6 +46,8 @@ def mask2box(mask,colour,canvas,minArea):
     tempCube.centreX=centre[0]
     tempCube.centreY=centre[1]
     tempCube.area=size[0]*size[1]
+    tempCube.width = min(size)
+    tempCube.height = max(size)
     cubeList[i]=tempCube
     box = np.intp(box) #np.intp: Integer used for indexing (same as C ssize_t; normally either int32 or int64)
     cv2.drawContours(canvas, [box], 0, colour)
@@ -85,17 +90,17 @@ class cubeSpotter:
     # R = Val
 
     # Yellow - H=30
-    self.hsvYellowLow=(20.0000, 100.0000, 150.0000)
-    self.hsvYellowHigh=(30.0000, 255.0000, 255.0000)
+    self.hsvYellowLow=(20.0000, 120.0000, 90.0000)
+    self.hsvYellowHigh=(40.0000, 255.0000, 255.0000)
 
     # Blue
-    self.hsvBlueLow=(95.0000, 150.0000, 50.0000)
-    self.hsvBlueHigh=(110,255,255)
+    self.hsvBlueLow=(90.0000, 90.0000, 50.0000)
+    self.hsvBlueHigh=(115,255,255)
 
     # Red - wraps around 0, but the red blocks are mostly in the 0-10 range
-    self.hsvRedLow1=(0.0000, 100.0000, 100.0000)
+    self.hsvRedLow1=(0.0000, 100.0000, 0.0000)
     self.hsvRedHigh1=(15,255,255)
-    self.hsvRedLow2=(177.0000, 100.0000, 100.0000)
+    self.hsvRedLow2=(177.0000, 0.0000, 0.0000)
     self.hsvRedHigh2=(180,255,255)
 
     # Use the openCV bridge
@@ -114,9 +119,10 @@ class cubeSpotter:
   def callback(self,data):
     try:
       cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+      # cv2.imwrite("ops.jpg",cv_image)
     except CvBridgeError as e:
       print(e)
-
+      
     # Using cv_image as the image
     # Convert to HSV colorspace
     hsv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
@@ -170,6 +176,11 @@ class cubeSpotter:
       tempCube.area=cubeListRed[c].area
       tempCube.normalisedCoordinateX=cubeListRed[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListRed[c].centreY/rows
+      tempCube.width = cubeListRed[c].width
+      #print('red cube height: ', tempCube.height)
+      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels
+      print('distance red:', dist)
+      tempCube.distance = dist
       returnCubeArray.cubes.append(tempCube)
 
     for c in range(len(cubeListBlue)):
@@ -178,6 +189,11 @@ class cubeSpotter:
       tempCube.area=cubeListBlue[c].area
       tempCube.normalisedCoordinateX=cubeListBlue[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListBlue[c].centreY/rows
+      tempCube.width = cubeListBlue[c].width
+      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels
+      print('distance blue:', dist)
+      tempCube.distance = dist
+      returnCubeArray.cubes.append(tempCube)
       returnCubeArray.cubes.append(tempCube)
 
     for c in range(len(cubeListYellow)):
@@ -186,6 +202,11 @@ class cubeSpotter:
       tempCube.area=cubeListYellow[c].area
       tempCube.normalisedCoordinateX=cubeListYellow[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListYellow[c].centreY/rows
+      tempCube.width = cubeListYellow[c].width
+      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels
+      print('distance yellow:', dist)
+      tempCube.distance = dist
+      returnCubeArray.cubes.append(tempCube)
       returnCubeArray.cubes.append(tempCube)   
 
     try:

@@ -91,15 +91,19 @@ class cubeTracker:
     rospy.sleep(1)
 
     self.order = str(input("Enter cube stack order (first letter only e.g. RYB): ")) # with this the user can input how many blocks to move and in which order.
+    while len([i for i in self.order if i.lower() not in "rby"]) > 0:
+      print("Unknown colour detected")
+      self.order = str(input("Enter cube stack order (first letter only e.g. RYB): "))
+
     self.mode = str(input("Pyramid or stack? (P/S): ")) #This gives the user the option between placing the cubes as a stack or a pyramid.
   
     if self.mode.lower() == "s":
-      self.stackPosX = float(input("Enter stack x position (in meters): ")
-      self.stackPosY = float(input("Enter stack y position (in meters): ")
-      while np.sqrt(self.stackPosX**2, self.stackPosY**2) > 0.20 or self.stackPosX < 0 or self.stackPosY > 0.02:
+      self.stackPosX = float(input("Enter stack x position (in meters): "))
+      self.stackPosY = float(input("Enter stack y position (in meters): "))
+      while ((np.sqrt(self.stackPosX**2 + self.stackPosY**2) > 0.20) or (self.stackPosX < 0) or (self.stackPosY > 0.02)):
         print("Position out of bounds")
-        self.stackPosX = float(input("Enter stack x position (in meters): ")
-        self.stackPosY = float(input("Enter stack y position (in meters): ")
+        self.stackPosX = float(input("Enter stack x position (in meters): "))
+        self.stackPosY = float(input("Enter stack y position (in meters): "))
                                
     self.cubeNumber = 0 #To move from one cube placement to the next, once a cube is placed, the cube number increments so the next cube in self.order is scanned for, at the start its set to 0.
     self.colourPicker() #This function is where the colour of the next cube is selected
@@ -142,9 +146,9 @@ class cubeTracker:
     ground_search = np.linspace([0.443,-0.979, 0.453, 1.8],[-1.5,-0.979, 0.453, 1.8], inc) # range of lower search positions
     high_search = np.linspace([-1.5, -0.73,-0.215,1.8],[0.443, -0.73,-0.215,1.8], inc) # range of higher search positions
     search = np.concatenate((ground_search, high_search), axis=0) # array of all search positions
-    print(search)
+    # print(search)
     for i in search: # move through each search position
-      print(i)
+      # print(i)
       self.move(i)
       if self.isTarget == True: # if block is seen, stop scanning
         break
@@ -185,8 +189,8 @@ class cubeTracker:
       ground_cam2block = np.sqrt((self.target.distance/100)**2 - (self.kinematics.position.z)**2) # use pythag to calculate the distance from the block to the ground beneath the claw
       blockX = ground_cam2block*np.cos(self.jointPose[0]) + self.kinematics.position.x # use trig to calculate the x coordinate for the block
       blockY = ground_cam2block*np.sin(self.jointPose[0]) + self.kinematics.position.y # use trig to calculate the y coordinate for the block
-      print(blockX)
-      print(blockY)
+      # print(blockX)
+      # print(blockY)
       # print(self.target.distance)
 
       self.aimLoop += 1 
@@ -233,7 +237,7 @@ class cubeTracker:
     self.moveGripper(1)
     self.cubeNumber += 1
     self.colourPicker()
-    self.moveKinematic(self.stackPosX,slef.stackPosY,0.05+(self.cubeNumber*0.05),1)
+    self.moveKinematic(self.stackPosX,self.stackPosY,0.05+(self.cubeNumber*0.05),1)
     
 
   def getTarget(self,data):
@@ -244,10 +248,12 @@ class cubeTracker:
     coY=[]
     # Get the red cubes
     for c in range(len(data.cubes)):
-      if (data.cubes[c].cube_colour==self.colour):
+      if (data.cubes[c].cube_colour==self.colour) and (data.cubes[c].distance < 25):
         area.append(data.cubes[c].area)
         coX.append(data.cubes[c].normalisedCoordinateX)
         coY.append(data.cubes[c].normalisedCoordinateY)
+      if (data.cubes[c].distance >= 25):
+        print(data.cubes[c].cube_colour + " cube spotted out of reach")
 
       
     
@@ -296,7 +302,7 @@ class cubeTracker:
       print("SCANNING FOR DROMAOSAURID")
       self.scan()
     else:
-      # print("DROMAOSAURID SPOTTED")
+      print("DROMAOSAURID SPOTTED")
       self.aimCamera()
 
 # Main 

@@ -8,19 +8,19 @@ import rospy
 import cv2 # Melodic might be cv3
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from cube_spotter.msg import cubeData
+from cube_spotter.msg import cubeData # importing msg types to use when publishing to topics
 from cube_spotter.msg import cubeArray
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np;
 
 class cube:
   def __init__(self):
-    self.centreX=0.0
+    self.centreX=0.0 # Here the cube class is initialised, defining cubes that will later be spotted
     self.centreY=0.0  
     self.area=0.0
-    self.width=0.0
-    self.height=0.0
-    self.distance=0.0
+    self.width=0.0   #We added data about the cubes that the program stores: their width
+    self.height=0.0 # Height
+    self.distance=0.0 #And their distance away from the gripper.
 
 # Function for finding boxes and drawing on the output image
 def mask2box(mask,colour,canvas,minArea):
@@ -46,8 +46,8 @@ def mask2box(mask,colour,canvas,minArea):
     tempCube.centreX=centre[0]
     tempCube.centreY=centre[1]
     tempCube.area=size[0]*size[1]
-    tempCube.width = min(size)
-    tempCube.height = max(size)
+    tempCube.width = min(size)  #As the cubes faces are rectangular in size, once it recognises a cube the shortest length is set to its 'width'
+    tempCube.height = max(size)  # The max length is stored as its height. Both of these are currently measured in pixels
     cubeList[i]=tempCube
     box = np.intp(box) #np.intp: Integer used for indexing (same as C ssize_t; normally either int32 or int64)
     cv2.drawContours(canvas, [box], 0, colour)
@@ -90,11 +90,11 @@ class cubeSpotter:
     # R = Val
 
     # Yellow - H=30
-    self.hsvYellowLow=(20.0000, 120.0000, 90.0000)
+    self.hsvYellowLow=(20.0000, 120.0000, 90.0000)  #We changed the colour HSV values of the blocks by testing the Hue, Saturation and value so the numbers precisely matched block colour
     self.hsvYellowHigh=(40.0000, 255.0000, 255.0000)
 
     # Blue
-    self.hsvBlueLow=(90.0000, 90.0000, 50.0000)
+    self.hsvBlueLow=(90.0000, 90.0000, 50.0000)  # We did this for all 3 block colours
     self.hsvBlueHigh=(115,255,255)
 
     # Red - wraps around 0, but the red blocks are mostly in the 0-10 range
@@ -176,12 +176,13 @@ class cubeSpotter:
       tempCube.area=cubeListRed[c].area
       tempCube.normalisedCoordinateX=cubeListRed[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListRed[c].centreY/rows
-      tempCube.width = cubeListRed[c].width
+      tempCube.width = cubeListRed[c].width # this takes the width in pixels of every red cube it finds and for each, stores it in its individual cube data
       #print('red cube height: ', tempCube.height)
-      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels
+      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels #Here the distance from the block to gripper is calculated using the focal length of the camera
+      #This focal length was found by camera calibration which allowed us to get a camera matrix that included f_x and f_y.
       print('distance red:', dist)
-      tempCube.distance = dist
-      returnCubeArray.cubes.append(tempCube)
+      tempCube.distance = dist  #The distance, now measured in cm is stored to temp cube
+      returnCubeArray.cubes.append(tempCube) #This data is all appended to the message Cube Array
 
     for c in range(len(cubeListBlue)):
       tempCube=cubeData()
@@ -190,7 +191,7 @@ class cubeSpotter:
       tempCube.normalisedCoordinateX=cubeListBlue[c].centreX/cols
       tempCube.normalisedCoordinateY=cubeListBlue[c].centreY/rows
       tempCube.width = cubeListBlue[c].width
-      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels
+      dist = (3*620)/tempCube.width #distance = (width in cm x focal length in pix per cm) / height in pixels #It is the same for all colours
       print('distance blue:', dist)
       tempCube.distance = dist
       returnCubeArray.cubes.append(tempCube)

@@ -92,6 +92,15 @@ class cubeTracker:
 
     self.order = str(input("Enter cube stack order (first letter only e.g. RYB): ")) # with this the user can input how many blocks to move and in which order.
     self.mode = str(input("Pyramid or stack? (P/S): ")) #This gives the user the option between placing the cubes as a stack or a pyramid.
+  
+    if self.mode.lower() == "s":
+      self.stackPosX = float(input("Enter stack x position (in meters): ")
+      self.stackPosY = float(input("Enter stack y position (in meters): ")
+      while np.sqrt(self.stackPosX**2, self.stackPosY**2) > 0.20 or self.stackPosX < 0 or self.stackPosY > 0.02:
+        print("Position out of bounds")
+        self.stackPosX = float(input("Enter stack x position (in meters): ")
+        self.stackPosY = float(input("Enter stack y position (in meters): ")
+                               
     self.cubeNumber = 0 #To move from one cube placement to the next, once a cube is placed, the cube number increments so the next cube in self.order is scanned for, at the start its set to 0.
     self.colourPicker() #This function is where the colour of the next cube is selected
 
@@ -219,12 +228,12 @@ class cubeTracker:
 
   # place cubes in a stack
   def stack(self):
-    self.moveKinematic(0,-0.15,0.05+(self.cubeNumber*0.05),1)
-    self.moveKinematic(0,-0.15,0.02+(self.cubeNumber*0.05),1)
+    self.moveKinematic(self.stackPosX,self.stackPosY,0.05+(self.cubeNumber*0.05),1)
+    self.moveKinematic(self.stackPosX,self.stackPosY,0.02+(self.cubeNumber*0.05),1)
     self.moveGripper(1)
     self.cubeNumber += 1
     self.colourPicker()
-    self.moveKinematic(0,-0.1,0.02+(self.cubeNumber*0.06),1)
+    self.moveKinematic(self.stackPosX,slef.stackPosY,0.05+(self.cubeNumber*0.05),1)
     
 
   def getTarget(self,data):

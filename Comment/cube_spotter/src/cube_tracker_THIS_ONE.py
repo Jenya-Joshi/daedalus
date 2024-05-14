@@ -18,7 +18,7 @@ from open_manipulator_msgs.msg import JointPosition
 from open_manipulator_msgs.srv import SetJointPosition
 from open_manipulator_msgs.srv import GetJointPosition
 from open_manipulator_msgs.msg import KinematicsPose
-from open_manipulator_msgs.srv import SetKinematicsPose
+from open_manipulator_msgs.srv import SetKinematicsPose #We imported Set KinematicsPose to subscribe to the goal_path_position_only service to plan the IK route of the gripper in taskspace
 
 class cubeTracker:
 
@@ -39,12 +39,12 @@ class cubeTracker:
     self.image_sub = rospy.Subscriber('states',OpenManipulatorState,self.getStates)
     self.joint_state_sub = rospy.Subscriber('joint_states',JointState,self.getJoints)
     self.moving_sub = rospy.Subscriber('cubes',cubeArray,self.getTarget)
-    self.grip_pos = rospy.Subscriber('/gripper/kinematics_pose', KinematicsPose, self.grip_where)
+    self.grip_pos = rospy.Subscriber('/gripper/kinematics_pose', KinematicsPose, self.grip_where) # This subscribes to the kinematics pose of the gripper so we know its position.
 
     # Create the service caller to move the robot
     self.setPose = rospy.ServiceProxy('goal_joint_space_path', SetJointPosition)
     self.setGripper = rospy.ServiceProxy('goal_tool_control', SetJointPosition)
-    self.IKpose = rospy.ServiceProxy('goal_task_space_path_position_only', SetKinematicsPose)
+    self.IKpose = rospy.ServiceProxy('goal_task_space_path_position_only', SetKinematicsPose) # Subscribes to the service that plans a route through task space from one position to another 
 
     self.aimLoop = 0
 
@@ -78,7 +78,7 @@ class cubeTracker:
     # Send the robot "home"
     self.jointRequest=JointPosition()
     self.jointRequest.joint_name=["joint1","joint2","joint3","joint4"]  
-    self.jointRequest.position=[0.0,-1.05,0.357,1.3]
+    self.jointRequest.position=[0.0,-1.05,0.357,1.3]  #We lowered joint 4's angle in this position so it didn't see the wall as a giant blue cube God.
     self.setPose(str(),self.jointRequest,1.0)
 
     rospy.sleep(1) # Wait for the arm to stand up
@@ -90,54 +90,54 @@ class cubeTracker:
 
     rospy.sleep(1)
 
-    self.order = str(input("Enter cube stack order (first letter only e.g. RYB): "))
-    self.mode = str(input("Pyramid or stack? (P/S): "))
-    self.cubeNumber = 0
-    self.colourPicker()
+    self.order = str(input("Enter cube stack order (first letter only e.g. RYB): ")) # with this the user can input how many blocks to move and in which order.
+    self.mode = str(input("Pyramid or stack? (P/S): ")) #This gives the user the option between placing the cubes as a stack or a pyramid.
+    self.cubeNumber = 0 #To move from one cube placement to the next, once a cube is placed, the cube number increments so the next cube in self.order is scanned for, at the start its set to 0.
+    self.colourPicker() #This function is where the colour of the next cube is selected
 
     # As the last movement called was the arm, we dont update the request again below, but it would be necessary if switching between the arm and the gripper.
 
-  def move(self,pose,time=0.5):
+  def move(self,pose,time=0.5):  #This function sets the movement of the robot
     self.jointRequest.joint_name=["joint1","joint2","joint3","joint4"]  
     self.jointRequest.position=pose
     self.setPose(str(),self.jointRequest,time)
     rospy.sleep(time)
 
-  def moveKinematic(self,x,y,z,time,recursCount=0):
-    pose = KinematicsPose()
-    pose.pose.position.x = x
-    pose.pose.position.y = y
+  def moveKinematic(self,x,y,z,time,recursCount=0):  #This function controls all movement of the robot, taking in desired position it wants to move to, and the time wished to move it there as parametres.
+    pose = KinematicsPose() #The current position of the gripper is set to 'pose'.
+    pose.pose.position.x = x #The desired x position of the gripper in taskspace is set
+    pose.pose.position.y = y #as are the y and z position
     pose.pose.position.z = z
-    response = self.IKpose(str(), "gripper", pose, time)
-    rospy.sleep(time)
-    if not response.is_planned:
+    response = self.IKpose(str(), "gripper", pose, time) #The Inverse Kinematics of the robot is found between gripper current pose and the desired position
+    rospy.sleep(time) #To prevent controller freezing the robot must sleep for the duration it moves
+    if not response.is_planned: #This is a recursive function for if the IK soloution fails
       recursCount += 1
-      currentPose = [self.kinematics.position.x,self.kinematics.position.y,self.kinematics.position.z]
-      difference = np.subtract([x,y,z],currentPose)
+      currentPose = [self.kinematics.position.x,self.kinematics.position.y,self.kinematics.position.z] #If the full path planning fails, the current position is taken
+      difference = np.subtract([x,y,z],currentPose) #And the path from current postion to desired is found and halved so the robot can try to move halfway to desired point 
       target = currentPose + difference/2
-      if recursCount < 5:
+      if recursCount < 5: #The count prevents the robot getting stuck trying to find a soloution, it only tries 5 times.
         self.moveKinematic(target[0],target[1],target[2],time,recursCount)
       else:
         self.move([0.0,-1.05,0.357,1.3])
-      self.moveKinematic(x,y,z,time)
+      self.moveKinematic(x,y,z,time) #Once halfway to desired point it tries to find an IK soloution from the new position
 
-  def moveGripper(self,state=1):
+  def moveGripper(self,state=1): #This function is called to move the gripper, its default state is open
     self.gripperRequest=JointPosition()
     self.gripperRequest.joint_name=["gripper"]  
-    self.gripperRequest.position=[state*0.01]# -0.01 represents closed
+    self.gripperRequest.position=[state*0.01]# -0.01 represents closed, if state changes to -1, this calc opens the gripper
     self.setGripper(str(),self.gripperRequest,1.0)
     rospy.sleep(1)
 
-  def scan(self, inc = 6, time = 5):
+  def scan(self, inc = 6, time = 5): #This function scans the reachable workspace for blocks
     self.aimLoop = 0
-    ground_search = np.linspace([0.443,-0.979, 0.453, 1.8],[-1.5,-0.979, 0.453, 1.8], inc)
-    high_search = np.linspace([-1.5, -0.73,-0.215,1.8],[0.443, -0.73,-0.215,1.8], inc)
-    search = np.concatenate((ground_search, high_search), axis=0)
+    ground_search = np.linspace([0.443,-0.979, 0.453, 1.8],[-1.5,-0.979, 0.453, 1.8], inc) # range of lower search positions
+    high_search = np.linspace([-1.5, -0.73,-0.215,1.8],[0.443, -0.73,-0.215,1.8], inc) # range of higher search positions
+    search = np.concatenate((ground_search, high_search), axis=0) # array of all search positions
     print(search)
-    for i in search:
+    for i in search: # move through each search position
       print(i)
       self.move(i)
-      if self.isTarget == True:
+      if self.isTarget == True: # if block is seen, stop scanning
         break
 
 
@@ -145,7 +145,7 @@ class cubeTracker:
   def getJoints(self,data):
     self.jointPose=data.position
 
-
+  # get the grippers cartesean coordinates
   def grip_where(self,data):
     self.kinematics=data.pose 
 
@@ -173,16 +173,17 @@ class cubeTracker:
       self.setPose(str(),self.jointRequest,1.0)
 
       rospy.sleep(1) # Sleep after sending the service request as you can crash the robot firmware if you poll too fast   
-      ground_cam2block = np.sqrt((self.target.distance/100)**2 - (self.kinematics.position.z)**2)
-      blockX = ground_cam2block*np.cos(self.jointPose[0]) + self.kinematics.position.x
-      blockY = ground_cam2block*np.sin(self.jointPose[0]) + self.kinematics.position.y
+      ground_cam2block = np.sqrt((self.target.distance/100)**2 - (self.kinematics.position.z)**2) # use pythag to calculate the distance from the block to the ground beneath the claw
+      blockX = ground_cam2block*np.cos(self.jointPose[0]) + self.kinematics.position.x # use trig to calculate the x coordinate for the block
+      blockY = ground_cam2block*np.sin(self.jointPose[0]) + self.kinematics.position.y # use trig to calculate the y coordinate for the block
       print(blockX)
       print(blockY)
       # print(self.target.distance)
 
-      self.aimLoop += 1
+      self.aimLoop += 1 
 
-      if self.aimLoop == 6:
+      if self.aimLoop == 6: # run aimCamera 6 times before grabbing the robot to make sure the block is centred
+        # Grab the cube
         self.moveGripper(1)
         self.moveKinematic(blockX*1.05,blockY*1.05,0.02,4)
         self.moveGripper(-1)
@@ -192,24 +193,23 @@ class cubeTracker:
         elif self.mode.lower() == "s":
           self.stack()
         self.aimLoop = 0
-        
-  # Find the normalised XY co-ordinate of a cube
 
+  # Place cubes in a pyramid
   def pyramid(self):
-    if self.cubeNumber == 0:
+    if self.cubeNumber == 0: # first cube
       self.moveKinematic(0, -0.2, 0.02, 2)
       self.moveGripper(1)
       self.cubeNumber += 1
       self.colourPicker()
       self.moveKinematic(0, -0.15, 0.1, 1)
-    elif self.cubeNumber == 1:
+    elif self.cubeNumber == 1: # second cube
       self.moveKinematic(0, -0.17, 0.1, 2)
       self.moveKinematic(0, -0.17, 0.02, 1)
       self.moveGripper(1)
       self.cubeNumber += 1
       self.colourPicker()
       self.moveKinematic(0, -0.1, 0.1, 1)
-    elif self.cubeNumber == 2:
+    elif self.cubeNumber == 2: # third cube
       self.moveKinematic(0, -0.175, 0.12, 2)
       self.moveKinematic(0, -0.175, 0.08, 1)
       self.moveGripper(1)
@@ -217,6 +217,7 @@ class cubeTracker:
       self.colourPicker()
       self.moveKinematic(0, -0.1, 0.14, 1)
 
+  # place cubes in a stack
   def stack(self):
     self.moveKinematic(0,-0.15,0.05+(self.cubeNumber*0.05),1)
     self.moveKinematic(0,-0.15,0.02+(self.cubeNumber*0.05),1)
@@ -247,14 +248,15 @@ class cubeTracker:
       self.targetX=coX[index_max]
       self.targetY=coY[index_max]
       self.target=data.cubes[index_max]
-      self.isTarget=True
+      self.isTarget=True # raises flag to indicate that a cube has been seen
       # print("TARGET ACQUIRED")
     else: # If you dont find a target, report the centre of the image to keep the camera still
       self.targetX=0.5
       self.targetY=0.5
-      self.isTarget=False
+      self.isTarget=False # lowers flag to indicate no cubes seen
       # print("TARGET NEUTRALISED")
 
+  # Changes colour cube that the camera looks for
   def colourPicker(self):
     try:
       if self.order[self.cubeNumber].lower() == "r":
@@ -264,12 +266,13 @@ class cubeTracker:
       elif self.order[self.cubeNumber].lower() == "b":
         self.colour = "blue"
       print(self.colour)
-    except:
+    except: # if an overflow error occurs, it indicates that the program is complete and ends the program
       print("job done :)")
       # self.party()
       exit()
       print("hasnt ended")
-      
+
+  # Does the worm
   def party(self):
     for i in range(0,4):
       self.move([0,0.342,-0.775,0.396])
@@ -278,7 +281,7 @@ class cubeTracker:
       self.move([0,-0.468,0.621,-0.104])
     self.move([0.443,-0.979, 0.453, 1.8])
 
-
+  # chooses between scanning or targeting
   def loop(self):
     if self.isTarget == False:
       print("SCANNING FOR DROMAOSAURID")
